@@ -1,0 +1,500 @@
+---
+title: "ABM_Vis_KPIs_v1"
+author: "Fi Crawford"
+date: "2022"
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE, warning=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
+
+library(reshape2)
+library(tidyverse)
+
+#  Manually set WD:
+#setwd("C:/Users/f-crawford/OneDrive - UWE Bristol/Dissertation/Python_initial")
+
+
+```
+
+
+
+
+## Simulation summary:
+
+```{r read_files}
+
+    run_name <- "Final5_testtest"
+
+
+# read in relevant line from summary s/s
+
+    summ_data <- read.csv("../sim_overview.csv") 
+    summ_data <- summ_data[summ_data$name == run_name,]
+    summ_data <- summ_data[nrow(summ_data),]
+
+    summ_data <- t(summ_data) 
+
+
+    print(summ_data)
+
+
+```
+
+
+
+
+## Checks 
+
+
+Firstly check the 'eat' data.  
+
+
+```{r checks_eat}
+
+    read_file1 <- paste0("../", run_name, "/hist_eat.csv")
+
+    hist_eat <- read.csv(read_file1)
+    hist_eat$X <- NULL 
+    
+    hist_eat2 <- melt(hist_eat,
+                      measure.vars = colnames(hist_eat))
+
+
+    ggplot(hist_eat2, aes(value)) + 
+        geom_histogram(binwidth = 1, fill = "blue", colour = "black") + 
+        theme_bw()
+
+
+```
+
+
+
+
+Check how much people need/want to buy:
+(Black line is people who did not need to shop on that day)
+
+```{r checks_amountshop}
+
+    read_file1 <- paste0("../", run_name, "/hist_amountshop.csv")
+
+    hist_amountshop <- read.csv(read_file1)
+    hist_amountshop$X <- NULL 
+    
+    hist_amountshop2 <- melt(hist_amountshop,
+                      measure.vars = colnames(hist_amountshop))
+
+    hist_amountshop2_noshop <- hist_amountshop2[hist_amountshop2$value == -1,]
+    hist_amountshop2_shop <- hist_amountshop2[hist_amountshop2$value != -1,]
+
+    hist_amountshop2CAST_noshop <- hist_amountshop2_noshop %>% 
+        group_by(variable) %>% 
+        summarise(num_obs = n())
+    
+    hist_amountshop2CAST_shop <- hist_amountshop2_shop %>%
+        group_by(variable, value) %>%
+        summarise(num_obs = n())
+    
+    hist_amountshop2CAST_noshop$variable <- substring(hist_amountshop2CAST_noshop$variable, 5)
+    hist_amountshop2CAST_noshop$variable <- as.numeric(hist_amountshop2CAST_noshop$variable)
+    
+    hist_amountshop2CAST_shop$variable <- substring(hist_amountshop2CAST_shop$variable, 5)
+    hist_amountshop2CAST_shop$variable <- as.numeric(hist_amountshop2CAST_shop$variable)
+    
+    # ggplot(hist_amountshop2CAST_noshop, aes(x= variable, y = num_obs)) + 
+    #     geom_line()
+        
+    
+    ggplot() +
+        geom_col(data = hist_amountshop2CAST_shop, aes(x= variable, y = num_obs, fill = as.factor(value)))+
+        geom_line(data = hist_amountshop2CAST_noshop, aes(x= variable, y = num_obs))+ 
+        theme_bw()+
+        theme(legend.title = element_blank())+
+        ylab("Number of people")+
+        xlab("Day")+
+        ggtitle("Amount of food people want to purchase")
+
+
+```
+
+
+
+
+
+
+
+Check whether they want to shop online or in store:
+
+```{r checks_whereshop}
+
+    read_file1 <- paste0("../", run_name, "/hist_whereshop.csv")
+
+    hist_whereshop <- read.csv(read_file1)
+    hist_whereshop$X <- NULL 
+    
+    hist_whereshop2 <- melt(hist_whereshop,
+                      measure.vars = colnames(hist_whereshop))
+
+    hist_whereshop2CAST <- hist_whereshop2 %>% 
+        group_by(variable, value) %>% 
+        summarise(num_obs = n())
+    
+    hist_whereshop2CAST$variable <- substring(hist_whereshop2CAST$variable, 5)
+    hist_whereshop2CAST$variable <- as.numeric(hist_whereshop2CAST$variable)
+    
+    hist_whereshop2CAST$value <- factor(hist_whereshop2CAST$value,
+                                        levels = c("S", "O", ""),
+                                        labels = c("In-store", "Online", "No shop required"))
+ 
+
+    ggplot(hist_whereshop2CAST, aes(x = variable, 
+                                    y = num_obs,
+                                    group = value,
+                                    colour = value)) + 
+        geom_line() + 
+        theme_bw()+
+        theme(legend.title = element_blank())+
+        ylab("Number of people")+
+        xlab("Day")
+
+
+```
+
+
+
+
+## Was the shop successful?
+
+
+```{r checks_success_shop}
+
+    read_file1 <- paste0("../", run_name, "/hist_success.csv")
+
+    hist_success_shop <- read.csv(read_file1)
+    hist_success_shop$X <- NULL 
+    
+    hist_success_shop2 <- melt(hist_success_shop,
+                      measure.vars = colnames(hist_success_shop))
+    
+    
+    # Look at overall success/unsuccess first:
+    hist_success_shop2overall <- hist_success_shop2
+    hist_success_shop2overall$value <- substring(hist_success_shop2overall$value, 1,1)
+
+    hist_success_shop2overall2 <- hist_success_shop2overall %>% 
+        group_by(variable, value) %>% 
+        summarise(num_obs = n()) 
+    
+    hist_success_shop2overall2$variable <- substring(hist_success_shop2overall2$variable, 5)
+    hist_success_shop2overall2$variable <- as.numeric(hist_success_shop2overall2$variable)
+    
+    
+    # hist_success_shop2overall2$value <- factor(hist_success_shop2overall2$value,
+    #                                     levels = c("Suc", "Part", "Unsuc", ""),
+    #                                     labels = c("Successful",
+    #                                                "Partially successful",
+    #                                                "Unsuccessful",
+    #                                                "No shop required"))
+ 
+    hist_success_shop2overall2$value <- factor(hist_success_shop2overall2$value,
+                                        levels = c("S", "P", "U", ""),
+                                        labels = c("Successful",
+                                                   "Partially successful",
+                                                   "Unsuccessful",
+                                                   "No shop required"))
+
+    ggplot(hist_success_shop2overall2, aes(x = variable, 
+                                    y = num_obs,
+                                    group = value,
+                                    fill = value)) + 
+        geom_col() + 
+        theme_bw()+
+        theme(legend.title = element_blank())+
+        ylab("Number of people")+
+        xlab("Day")
+    
+    
+    
+    # Success by location
+    ##########   For now assume location is just 1 digit!!!!!!
+    
+    hist_success_shop2loc <- hist_success_shop2
+    hist_success_shop2loc$location <- substring(hist_success_shop2loc$value,                               nchar(hist_success_shop2loc$value),nchar(hist_success_shop2loc$value))
+    
+    hist_success_shop2loc$result1 <- substring(hist_success_shop2loc$value,                               1,nchar(hist_success_shop2loc$value)-1)
+
+   
+    hist_success_shop2loc2 <- hist_success_shop2loc %>% 
+        group_by(variable, location, result1) %>% 
+        summarise(num_obs = n()) 
+    
+    hist_success_shop2loc2$variable <- substring(hist_success_shop2loc2$variable, 5)
+    hist_success_shop2loc2$variable <- as.numeric(hist_success_shop2loc2$variable)
+    
+    hist_success_shop2loc2 <- hist_success_shop2loc2[hist_success_shop2loc2$result1 != "",]
+    
+    hist_success_shop2loc2$value <- factor(hist_success_shop2loc2$result1,
+                                        levels = c("Suc", "Part", "Unsuc"),
+                                        labels = c("Successful",
+                                                   "Partially successful",
+                                                   "Unsuccessful"))
+ 
+    # hist_success_shop2loc2$value <- factor(hist_success_shop2loc2$result1,
+    #                                     levels = c("S", "P", "U", ""),
+    #                                     labels = c("Successful",
+    #                                                "Partially successful",
+    #                                                "Unsuccessful",
+    #                                                "No shop required"))
+
+    ggplot(hist_success_shop2loc2, 
+           aes(x = variable, 
+                                    y = num_obs,
+                                    colour = value,
+                                    group = location)) + 
+        geom_line() + 
+        facet_grid(location ~ .)+
+        theme_bw()+
+        theme(legend.title = element_blank())+
+        ylab("Number of people")+
+        xlab("Day")+
+        ggtitle("Success data by location")
+    
+    
+    
+    
+
+
+```
+
+
+```{r}
+    # Success by platform
+    
+    hist_success_shop2platf <- cbind(hist_success_shop2, hist_whereshop2)
+
+    colnames(hist_success_shop2platf) <- c("day1", "success", 
+                                           "day2", "platform")
+    hist_success_shop2platf$day2 <- NULL
+
+    hist_success_shop2platf$succ2 <- substring(hist_success_shop2platf$success,                               1,1)
+      
+    hist_success_shop2platf <- hist_success_shop2platf[hist_success_shop2platf$platform != "",]
+
+    
+    hist_success_shop2platf2 <- hist_success_shop2platf %>% 
+        group_by(day1, platform, succ2) %>% 
+        summarise(num_obs = n()) 
+    
+    
+
+    
+    hist_success_shop2platf2$succ2 <- factor(hist_success_shop2platf2$succ2,
+                                        levels = c("S", "P", "U"),
+                                        labels = c("Successful",
+                                                   "Partially successful",
+                                                   "Unsuccessful"))
+    
+    hist_success_shop2platf2$platform <- factor(hist_success_shop2platf2$platform,
+                                        levels = c("S", "O"),
+                                        labels = c("Supermarket",
+                                                   "Online"))
+ 
+    # hist_success_shop2loc2$value <- factor(hist_success_shop2loc2$result1,
+    #                                     levels = c("S", "P", "U", ""),
+    #                                     labels = c("Successful",
+    #                                                "Partially successful",
+    #                                                "Unsuccessful",
+    #                                                "No shop required"))
+
+    ggplot(hist_success_shop2platf2, 
+           aes(x = day1, 
+                                    y = num_obs,
+                                    colour = succ2,
+                                    group = platform)) + 
+        geom_line() + 
+        facet_grid(platform ~ ., scales = "free_y")+
+        theme_bw()+
+        theme(legend.title = element_blank())+
+        ylab("Number of people")+
+        xlab("Day")+
+        ggtitle("Success data by platform")
+
+
+
+
+```
+
+
+
+
+Then purchases per day by shop type (i.e. online or supermarket).
+
+
+
+```{r check_purchases}
+
+    read_file1 <- paste0("../", run_name, "/hist_purchased.csv")
+
+    hist_purchased <- read.csv(read_file1)
+    hist_purchased$X <- NULL 
+    hist_purchased[hist_purchased == -1] <- NA
+    hist_purchased[hist_purchased == 0] <- NA
+
+    
+    hist_purchased2 <- melt(hist_purchased,
+                      measure.vars = colnames(hist_purchased)) 
+    
+    #Overall purchases
+    hist_purchased3 <- hist_purchased2 %>% 
+        group_by(variable) %>%
+        summarise(across(everything(), .f = list(mean = mean, sum = sum), na.rm = TRUE))
+
+    hist_purchased3$variable <- substring(hist_purchased3$variable, 5)
+    hist_purchased3$variable <- as.numeric(hist_purchased3$variable)
+    
+    ggplot(hist_purchased3, aes(x = variable, 
+                                    y = value_mean)) + 
+        geom_line() + 
+        theme_bw()+
+        theme(legend.title = element_blank())+
+        ylab("Average amount purchased")+
+        xlab("Day")
+   
+        
+    ggplot(hist_purchased3, aes(x = variable, 
+                                    y = value_sum)) + 
+        geom_line() + 
+        theme_bw()+
+        theme(legend.title = element_blank())+
+        ylab("Total amount purchased")+
+        xlab("Day")
+
+    
+    
+    # Then look at online versus in-store
+    
+    online_purch <- hist_purchased
+    online_purch[hist_whereshop != "O"] <- NA
+    
+    online_purch2 <- melt(online_purch,
+                      measure.vars = colnames(online_purch)) 
+    
+    online_purch3 <- online_purch2 %>% 
+        group_by(variable) %>%
+        summarise(across(everything(), .f = list(mean = mean, sum = sum), na.rm = TRUE))
+
+    online_purch3$shop_type <- "Online" 
+    
+    
+    
+    instore_purch <- hist_purchased
+    instore_purch[hist_whereshop != "S"] <- NA
+    
+    instore_purch2 <- melt(instore_purch,
+                      measure.vars = colnames(instore_purch)) 
+    
+    #Overall purchases
+    instore_purch3 <- instore_purch2 %>% 
+        group_by(variable) %>%
+        summarise(across(everything(), .f = list(mean = mean, sum = sum), na.rm = TRUE))
+
+    instore_purch3$shop_type <- "Instore" 
+    
+    
+    all_purch <- rbind(online_purch3, instore_purch3)
+    
+    
+    all_purch$variable <- substring(all_purch$variable, 5)
+    all_purch$variable <- as.numeric(all_purch$variable)
+    
+    ggplot(all_purch, aes(x = variable, 
+                                    y = value_mean,
+                          group = shop_type,
+                          colour = shop_type)) + 
+        geom_line() + 
+        theme_bw()+
+        theme(legend.title = element_blank())+
+        ylab("Average amount purchased")+
+        xlab("Day")
+   
+        
+    ggplot(all_purch, aes(x = variable, 
+                                    y = value_sum,
+                          group = shop_type,
+                          colour = shop_type)) + 
+        geom_line() + 
+        theme_bw()+
+        theme(legend.title = element_blank())+
+        ylab("Total amount purchased")+
+        xlab("Day")
+
+    
+    
+
+```
+
+
+## How are cupboards looking?
+
+```{r checks_cupboard}
+
+    read_file1 <- paste0("../", run_name, "/hist_cupboard.csv")
+
+    hist_cupboard <- read.csv(read_file1)
+    hist_cupboard$X <- NULL 
+    
+    hist_cupboard2 <- melt(hist_cupboard,
+                      measure.vars = colnames(hist_cupboard))
+    
+    
+    
+    # Change day to numeric so we can bin the data
+    hist_cupboard2$variable <- substring(hist_cupboard2$variable, 5)
+    hist_cupboard2$variable <- as.numeric(hist_cupboard2$variable)
+
+    num_days2 <- summ_data[row.names(summ_data) == "num_days"]
+    bin_days1 <- seq(1, as.numeric(num_days2)+25, by = 25)
+    
+    
+    hist_cupboard2$day_cat <- cut(hist_cupboard2$variable, breaks = bin_days1,
+      include.lowest = TRUE)
+    
+    
+    
+    ggplot(hist_cupboard2, aes(x = day_cat, 
+                                    y = value)) + 
+        geom_boxplot() + 
+        theme_bw()+
+        theme(legend.title = element_blank(),
+              axis.text.x = element_text(size = rel(0.85)))+
+        ylab("Cupboard stock")+
+        xlab("")
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+    
+    
+    
+
+
+```
+
+
+
+
+
+
+
+
+
