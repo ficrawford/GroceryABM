@@ -1,0 +1,9 @@
+name,location,type,stock,capacity
+1,1,supermarket,30000,1000
+2,2,supermarket,18000,800
+3,3,supermarket,18000,800
+4,4,supermarket,15000,800
+1,1,online,10000,150
+2,2,online,10000,150
+3,3,online,10000,150
+4,4,online,18000,250
